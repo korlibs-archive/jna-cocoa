@@ -52,10 +52,24 @@ interface ObjectiveC : Library {
 
 interface Foundation : Library {
     fun NSLog(msg: Long): Unit
+    fun NSMakeRect(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat): NSRect
 
     //companion object : Foundation by Native.load("/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation", Foundation::class.java) as Foundation
     companion object : Foundation by Native.load("Foundation", Foundation::class.java, NativeName.OPTIONS) as Foundation {
         val NATIVE = NativeLibrary.getInstance("Foundation")
+    }
+}
+
+interface Cocoa : Library {
+    companion object : Cocoa by Native.load("Cocoa", Cocoa::class.java, NativeName.OPTIONS) as Cocoa {
+        val NATIVE = NativeLibrary.getInstance("Cocoa")
+    }
+}
+
+interface AppKit : Library {
+    companion object : AppKit by Native.load("AppKit", AppKit::class.java, NativeName.OPTIONS) as AppKit {
+        val NATIVE = NativeLibrary.getInstance("AppKit")
+        val NSApp = NATIVE.getGlobalVariableAddress("NSApp").getLong(0L)
     }
 }
 
@@ -158,9 +172,10 @@ fun Long.autorelease(): Long = this.apply { this.msgSend("autorelease") }
 fun <T : NSObject> T.autorelease(): T = this.apply { this.msgSend("autorelease") }
 
 @Structure.FieldOrder("value")
-class CGFloat(val value: Double) : Number(), NativeMapped, Structure.ByValue {
+class CGFloat(val value: Double) : Number(), NativeMapped {
     constructor() : this(0.0)
     constructor(value: Float) : this(value.toDouble())
+    constructor(value: Number) : this(value.toDouble())
     companion object {
         @JvmStatic
         val SIZE = Native.LONG_SIZE
@@ -205,6 +220,7 @@ public class NSPoint(@JvmField var x: CGFloat, @JvmField var y: CGFloat) : Struc
 @Structure.FieldOrder("width", "height")
 public class NSSize(@JvmField var width: CGFloat, @JvmField var height: CGFloat) : Structure(), Structure.ByValue {
     constructor(width: Double, height: Double) : this(CGFloat(width), CGFloat(height))
+    constructor(width: Number, height: Number) : this(CGFloat(width), CGFloat(height))
     constructor() : this(0.0, 0.0)
 
     override fun toString(): String = "($width, $height)"
@@ -220,12 +236,42 @@ public class NSRect(
     @JvmField var size: NSSize
 ) : Structure(), Structure.ByValue {
     constructor() : this(NSPoint(), NSSize())
+    constructor(x: Number, y: Number, width: Number, height: Number) : this(NSPoint(x, y), NSSize(width, height))
 
     override fun toString(): String = "NSRect($origin, $size)"
 }
 
 // -XstartOnFirstThread
 fun main(args: Array<String>) {
+    val pool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
+    val sharedApp = NSClass("NSApplication").msgSend("sharedApplication")
+
+    //val rect = Foundation.NSMakeRect(CGFloat(0), CGFloat(0), CGFloat(500), CGFloat(500))
+    val frame = NSRect(0, 0, 500, 500)
+    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", frame, 0, 0, 0)
+    window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blueColor"))
+    window.msgSend("makeKeyAndOrderFront:", sharedApp)
+
+    sharedApp.msgSend("run")
+
+    //println(rect)
+    /*
+    val frame = NSMakeRect(0, 0, 500, 500);
+    NSWindow* window  = [[[NSWindow alloc] initWithContentRect:frame
+        styleMask:NSBorderlessWindowMask
+    backing:NSBackingStoreBuffered
+    defer:NO] autorelease];
+    [window setBackgroundColor:[NSColor blueColor]];
+    [window makeKeyAndOrderFront:NSApp];
+
+    //AppDelegate *appDelegate = [[AppDelegate alloc] init];
+    //[NSApp setDelegate:appDelegate];
+    [NSApp run];
+    [pool release];
+     */
+}
+
+fun main2(args: Array<String>) {
     val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
 
     val app = NSApplication.sharedApplication()
@@ -257,7 +303,7 @@ fun main(args: Array<String>) {
     appMenuItem.msgSend("setSubmenu:", appMenu)
 
     val rect = NSRect(NSPoint(0, 0), NSSize(500, 500))
-    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", 15, 2, 0L)
+    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", rect.pointer, 15, 2, 0L)
     window.msgSend("setReleasedWhenClosed:", 0L)
 
     val WindowDelegate = ObjectiveC.objc_allocateClassPair(NSObject.OBJ_CLASS, "WindowDelegate", 0)
@@ -295,7 +341,7 @@ fun main(args: Array<String>) {
     println("pixelFormat: $pixelFormat")
     println("openGLContext: $openGLContext")
     openGLContext.msgSend("setView:", contentView)
-    window.msgSend("makeKeyAndOrderFront:", window)
+    window.msgSend("makeKeyAndOrderFront:", app.id)
     window.msgSend("setAcceptsMouseMovedEvents:", true)
     window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blackColor"))
     app.msgSend("activateIgnoringOtherApps:", true)
@@ -311,6 +357,7 @@ fun main(args: Array<String>) {
 
     //app.msgSend("run")
 
+    /*
     while (true) {
         val distantPast = NSClass("NSDate").msgSend("distantPast")
         val event = app.msgSend("nextEventMatchingMask:untilDate:inMode:dequeue:", Long.MAX_VALUE, distantPast, NSDefaultRunLoopMode.getLong(0L), true)
@@ -324,11 +371,13 @@ fun main(args: Array<String>) {
         openGLContext.msgSend("makeCurrentContext")
         val rect = NSRect()
 
-        contentView.msgSend_stret(rect, "frame")
+        //println(rect.pointer)
+        contentView.msgSend_stret(rect.pointer, "frame")
         //val rect = contentView.msgSend("frame")
         println("rect: $rect")
         //id event = ((id (*)(id, SEL, NSUInteger, id, id, BOOL))objc_msgSend)(NSApp, nextEventMatchingMaskSel, NSUIntegerMax, distantPast, NSDefaultRunLoopMode, YES);
     }
+    */
 
     //app.msgSend("updateWindows")
 

@@ -1,5 +1,227 @@
 import com.sun.jna.*
 
+// -XstartOnFirstThread
+fun main2(args: Array<String>) {
+    val pool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
+    val sharedApp = NSClass("NSApplication").msgSend("sharedApplication")
+
+    //val rect = Foundation.NSMakeRect(CGFloat(0), CGFloat(0), CGFloat(500), CGFloat(500))
+    val frame = NSRect(0, 0, 500, 500)
+    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", frame, 0, 0, 0)
+    window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blueColor"))
+    window.msgSend("makeKeyAndOrderFront:", sharedApp)
+
+    sharedApp.msgSend("run")
+
+    //println(rect)
+    /*
+    val frame = NSMakeRect(0, 0, 500, 500);
+    NSWindow* window  = [[[NSWindow alloc] initWithContentRect:frame
+        styleMask:NSBorderlessWindowMask
+    backing:NSBackingStoreBuffered
+    defer:NO] autorelease];
+    [window setBackgroundColor:[NSColor blueColor]];
+    [window makeKeyAndOrderFront:NSApp];
+
+    //AppDelegate *appDelegate = [[AppDelegate alloc] init];
+    //[NSApp setDelegate:appDelegate];
+    [NSApp run];
+    [pool release];
+     */
+}
+
+val NSWindowStyleMaskTitled = 1 shl 0
+val NSWindowStyleMaskClosable = 1 shl 1
+val NSWindowStyleMaskMiniaturizable = 1 shl 2
+val NSWindowStyleMaskResizable = 1 shl 3
+val NSWindowStyleMaskFullScreen = 1 shl 14
+val NSWindowStyleMaskFullSizeContentView = 1 shl 15
+
+fun main(args: Array<String>) {
+    val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
+
+    val app = NSClass("NSApplication").msgSend("sharedApplication")
+    val sharedApp = app
+
+    if (true) {
+        app.msgSend("setActivationPolicy:", 0)
+        val AppDelegateClass = ObjectiveC.objc_allocateClassPair(NSObject.OBJ_CLASS, "AppDelegate", 0)
+        val NSApplicationDelegate = ObjectiveC.objc_getProtocol("NSApplicationDelegate")
+        ObjectiveC.class_addProtocol(AppDelegateClass, NSApplicationDelegate)
+        ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
+        val appDelegate = AppDelegateClass.alloc().msgSend("init")
+        app.msgSend("setDelegate:", appDelegate)
+        app.msgSend("finishLaunching")
+
+        val menubar = NSClass("NSMenu").alloc().msgSend("init")
+        val appMenuItem = NSClass("NSMenuItem").alloc().msgSend("init")
+        menubar.msgSend("addItem:", appMenuItem)
+        app.msgSend("setMainMenu:", menubar)
+
+        ///////////////////
+
+        val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
+
+        var a: NSRect
+
+        val appMenu = NSClass("NSMenu").alloc().msgSend("init")
+        val quitMenuItem = NSClass("NSMenuItem").alloc()
+            .msgSend("initWithTitle:action:keyEquivalent:", NSString("Quit $processName").id, sel("terminate:"), NSString("q").id)
+        quitMenuItem.msgSend("autorelease")
+        appMenu.msgSend("addItem:", quitMenuItem)
+        appMenuItem.msgSend("setSubmenu:", appMenu)
+
+        val rect = NSRect(0, 0, 500, 500)
+        val MyNsWindow = AllocateClass("MyNSWindow", "NSWindow")
+
+        val window = MyNsWindow.alloc().msgSend("initWithContentRect:styleMask:backing:defer:", rect, NSWindowStyleMaskTitled or NSWindowStyleMaskClosable or NSWindowStyleMaskMiniaturizable or NSWindowStyleMaskResizable or NSWindowStyleMaskResizable or NSWindowStyleMaskFullSizeContentView, 2, 0)
+
+        //window.msgSend("styleMask", window.msgSend("styleMask").toInt() or NSWindowStyleMaskFullScreen)
+
+        window.msgSend("setReleasedWhenClosed:", 0L)
+
+        val contentView = window.msgSend("contentView")
+        println("contentView: $contentView")
+
+        contentView.msgSend("setWantsBestResolutionOpenGLSurface:", true)
+
+        window.msgSend("cascadeTopLeftFromPoint:", NSPoint(20, 20))
+        window.msgSend("setTitle:", NSString("sup from Java"))
+
+        val glAttributes = intArrayOf(
+            8, 24,
+            11, 8,
+            5,
+            73,
+            72,
+            55, 1,
+            56, 4,
+            //99, 0x1000, // or 0x3200
+            99, 0x3200,
+            0
+        )
+
+        val pixelFormat = NSClass("NSOpenGLPixelFormat").alloc().msgSend("initWithAttributes:", glAttributes)
+        val openGLContext = NSClass("NSOpenGLContext").alloc().msgSend("initWithFormat:shareContext:", pixelFormat, null)
+        println("pixelFormat: $pixelFormat")
+        println("openGLContext: $openGLContext")
+        openGLContext.msgSend("setView:", contentView)
+        window.msgSend("setAcceptsMouseMovedEvents:", true)
+        window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blackColor"))
+        window.msgSend("makeKeyAndOrderFront:", app)
+        window.msgSend("center")
+
+        app.msgSend("activateIgnoringOtherApps:", true)
+
+        window.msgSend("makeKeyWindow")
+
+        window.msgSend("setIsVisible:", true)
+
+        //contentView.msgSend("fullScreenEnable")
+
+        //val NSApp = Foundation.NATIVE.getGlobalVariableAddress("NSApp")
+        val NSDefaultRunLoopMode = Foundation.NATIVE.getGlobalVariableAddress("NSDefaultRunLoopMode")
+        //val NSDefaultRunLoopMode = Foundation.NATIVE.getGlobalVariableAddress("NSDefaultRunLoopMode")
+        println("NSDefaultRunLoopMode: $NSDefaultRunLoopMode")
+
+
+        fun renderOpengl() {
+            val rect = MyNativeNSRect()
+            contentView.msgSend_stret(rect, "bounds")
+            println("RECT: $rect")
+            openGLContext.msgSend("makeCurrentContext")
+            GL.glViewport(0, 0, rect.width.toInt(), rect.height.toInt())
+            GL.glClearColor(.3f, .7f, 1f, 1f)
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+            openGLContext.msgSend("flushBuffer")
+
+        }
+
+        ObjectiveC.class_addMethod(MyNsWindow, sel("mouseMoved:"), ObjcCallback { self, _sel, sender ->
+            val data = MyNativeNSRect()
+            val res = sender.msgSend_stret(data.pointer, "locationInWindow")
+            //val res = NSClass("NSEvent").id.msgSend_stret(data, "mouseLocation")
+
+            println("MOUSE MOVED from NSWindow! $data")
+            renderOpengl()
+            0L
+        }, "v@:@")
+
+
+        val eventHandler = object : ObjcCallback {
+            override fun invoke(self: Long, _sel: Long, sender: Long): Long {
+                val point = NSPoint()
+
+                val senderName = ObjectiveC.class_getName(ObjectiveC.object_getClass(sender))
+                //val res = sender.msgSend_stret(data, "mouseLocation:")
+                //println("Mouse moved! $self, $_sel, $sender : $senderName : ${ObjectiveC.sel_getName(_sel)} : $res : $point : $data : ${sender.msgSend("buttonNumber")} : ${sender.msgSend("clickCount")}")
+
+                renderOpengl()
+                return 0L
+            }
+        }
+
+        /*
+        val MyResponderClass = AllocateClass("MyResponder", "NSObject", "NSResponder")
+        //ObjectiveC.class_addMethod(MyResponderClass, sel("mouseDragged:"), eventHandler, "v@:@")
+        //ObjectiveC.class_addMethod(MyResponderClass, sel("mouseUp:"), eventHandler, "v@:@")
+        //ObjectiveC.class_addMethod(MyResponderClass, sel("mouseDown:"), eventHandler , "v@:@")
+        ObjectiveC.class_addMethod(MyResponderClass, sel("mouseMoved:"), eventHandler, "v@:@")
+        val Responder = MyResponderClass.alloc().msgSend("init")
+        window.msgSend("setNextResponder:", Responder)
+        */
+
+        val WindowDelegate = AllocateClass("WindowDelegate", "NSObject", "NSWindowDelegate")
+        ObjectiveC.class_addMethod(WindowDelegate, sel("windowWillClose:"), windowWillClose, "v@:@")
+        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidResize:"), ObjcCallback { self, _sel, notification ->
+            println("windowDidResize")
+            renderOpengl()
+            0L
+        }, "v@:@")
+
+        val Delegate = WindowDelegate.alloc().msgSend("init")
+        window.msgSend("setDelegate:", Delegate)
+
+
+        //println("NSDefaultRunLoopMode: ${ObjectiveC.NATIVE.getGlobalVariableAddress("NSDefaultRunLoopMode")}")
+
+        //app.msgSend("run")
+
+        /*
+        while (true) {
+            val distantPast = NSClass("NSDate").msgSend("distantPast")
+            val event = app.msgSend("nextEventMatchingMask:untilDate:inMode:dequeue:", -1L, distantPast, NSDefaultRunLoopMode.getLong(0L), true)
+
+            if (event != 0L) {
+                //println("event: $event")
+                println("event: $event")
+            }
+
+            openGLContext.msgSend("update")
+            openGLContext.msgSend("makeCurrentContext")
+            val rect = NSRect()
+
+            //println(rect.pointer)
+            contentView.msgSend_stret(rect.pointer, "frame")
+            //val rect = contentView.msgSend("frame")
+            //println("rect: $rect")
+
+            app.msgSend("sendEvent:", event)
+            app.msgSend("updateWindows")
+            openGLContext.msgSend("flushBuffer")
+            //id event = ((id (*)(id, SEL, NSUInteger, id, id, BOOL))objc_msgSend)(NSApp, nextEventMatchingMaskSel, NSUIntegerMax, distantPast, NSDefaultRunLoopMode, YES);
+        }
+        */
+
+        //app.msgSend("updateWindows")
+    }
+
+
+    app.msgSend("run")
+
+    autoreleasePool.msgSend("drain")
+}
+
 //inline class ID(val id: Long)
 typealias ID = Long
 
@@ -14,6 +236,19 @@ annotation class NativeName(val name: String) {
 }
 
 typealias NSRectPtr = Pointer
+
+inline fun <reified T : Library> NativeLoad(name: String) = Native.load(name, T::class.java, NativeName.OPTIONS) as T
+
+interface GL : Library {
+    fun glViewport(x: Int, y: Int, width: Int, height: Int)
+    fun glClearColor(r: Float, g: Float, b: Float, a: Float)
+    fun glClear(flags: Int)
+    companion object : GL by NativeLoad("OpenGL") {
+        const val GL_COLOR_BUFFER_BIT = 0x00004000
+        val NATIVE = NativeLibrary.getInstance("OpenGL")
+    }
+
+}
 
 interface ObjectiveC : Library {
     fun objc_getClass(name: String): Long
@@ -42,10 +277,13 @@ interface ObjectiveC : Library {
 
     fun class_addMethod(cls: Long, name: Long, imp: Callback, types: String): Long
 
+    fun object_getClass(obj: ID): ID
+    fun class_getName(clazz: ID): String
+
     fun property_getName(prop: ID): String
     fun property_getAttributes(prop: ID): String
 
-    companion object : ObjectiveC by Native.load("objc", ObjectiveC::class.java, NativeName.OPTIONS) as ObjectiveC {
+    companion object : ObjectiveC by NativeLoad("objc") {
         val NATIVE = NativeLibrary.getInstance("objc")
     }
 }
@@ -168,6 +406,16 @@ val applicationShouldTerminateCallback = object : ApplicationShouldTerminateCall
     }
 }
 
+interface ObjcCallback : Callback {
+    operator fun invoke(self: Long, _sel: Long, sender: Long): Long
+}
+
+fun ObjcCallback(callback: (self: Long, _sel: Long, sender: Long) -> Long): ObjcCallback {
+    return object : ObjcCallback {
+        override fun invoke(self: Long, _sel: Long, sender: Long): Long = callback(self, _sel, sender)
+    }
+}
+
 interface WindowWillCloseCallback : Callback {
     operator fun invoke(self: Long, _sel: Long, sender: Long): Long
 }
@@ -249,161 +497,73 @@ public class NSRect(
     @JvmField var origin: NSPoint,
     @JvmField var size: NSSize
 ) : Structure(), Structure.ByValue {
-    constructor() : this(NSPoint(), NSSize())
+    constructor() : this(NSPoint(), NSSize()) {
+        allocateMemory()
+        autoWrite()
+    }
     constructor(x: Number, y: Number, width: Number, height: Number) : this(NSPoint(x, y), NSSize(width, height))
 
     override fun toString(): String = "NSRect($origin, $size)"
 }
 
-// -XstartOnFirstThread
-fun main2(args: Array<String>) {
-    val pool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
-    val sharedApp = NSClass("NSApplication").msgSend("sharedApplication")
+public class NativeNSRect {
+    private var pointer: Pointer
 
-    //val rect = Foundation.NSMakeRect(CGFloat(0), CGFloat(0), CGFloat(500), CGFloat(500))
-    val frame = NSRect(0, 0, 500, 500)
-    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", frame, 0, 0, 0)
-    window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blueColor"))
-    window.msgSend("makeKeyAndOrderFront:", sharedApp)
-
-    sharedApp.msgSend("run")
-
-    //println(rect)
-    /*
-    val frame = NSMakeRect(0, 0, 500, 500);
-    NSWindow* window  = [[[NSWindow alloc] initWithContentRect:frame
-        styleMask:NSBorderlessWindowMask
-    backing:NSBackingStoreBuffered
-    defer:NO] autorelease];
-    [window setBackgroundColor:[NSColor blueColor]];
-    [window makeKeyAndOrderFront:NSApp];
-
-    //AppDelegate *appDelegate = [[AppDelegate alloc] init];
-    //[NSApp setDelegate:appDelegate];
-    [NSApp run];
-    [pool release];
-     */
-}
-
-fun main(args: Array<String>) {
-    val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
-
-    val app = NSClass("NSApplication").msgSend("sharedApplication")
-    val sharedApp = app
-
-    if (true) {
-        app.msgSend("setActivationPolicy:", 0)
-        val AppDelegateClass = ObjectiveC.objc_allocateClassPair(NSObject.OBJ_CLASS, "AppDelegate", 0)
-        val NSApplicationDelegate = ObjectiveC.objc_getProtocol("NSApplicationDelegate")
-        ObjectiveC.class_addProtocol(AppDelegateClass, NSApplicationDelegate)
-        ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
-        val appDelegate = AppDelegateClass.alloc().msgSend("init").autorelease()
-        app.msgSend("setDelegate:", appDelegate)
-        app.msgSend("finishLaunching")
-
-        val menubar = NSClass("NSMenu").alloc().msgSend("init").autorelease()
-        val appMenuItem = NSClass("NSMenuItem").alloc().msgSend("init").autorelease()
-        menubar.msgSend("addItem:", appMenuItem)
-        app.msgSend("setMainMenu:", menubar)
-
-        ///////////////////
-
-        val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
-
-        var a: NSRect
-
-        val appMenu = NSClass("NSMenu").alloc().msgSend("init").autorelease()
-        val quitMenuItem = NSClass("NSMenuItem").alloc()
-            .msgSend("initWithTitle:action:keyEquivalent:", NSString("Quit $processName").autorelease().id, sel("terminate:"), NSString("q").autorelease().id)
-        quitMenuItem.msgSend("autorelease")
-        appMenu.msgSend("addItem:", quitMenuItem)
-        appMenuItem.msgSend("setSubmenu:", appMenu)
-
-        val rect = NSRect(0, 0, 500, 500)
-        //val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", rect.pointer, 15, 2, 0L)
-        val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", rect, 15, 2, 0)
-        window.msgSend("setReleasedWhenClosed:", 0L)
-
-        val WindowDelegate = AllocateClass("WindowDelegate", "NSObject", "NSWindowDelegate")
-
-        val windowWillCloseSel = sel("windowWillClose:")
-        ObjectiveC.class_addMethod(WindowDelegate, windowWillCloseSel, windowWillClose, "v@:@")
-
-        val wdg = WindowDelegate.alloc().msgSend("init").autorelease()
-        window.msgSend("setDelegate:", wdg)
-
-        val contentView = window.msgSend("contentView")
-        println("contentView: $contentView")
-
-        contentView.msgSend("setWantsBestResolutionOpenGLSurface:", true)
-
-        window.msgSend("cascadeTopLeftFromPoint:", NSPoint(20, 20))
-        window.msgSend("setTitle:", NSString("sup from Java"))
-
-        val glAttributes = intArrayOf(
-            8, 24,
-            11, 8,
-            5,
-            73,
-            72,
-            55, 1,
-            56, 4,
-            99, 0x1000, // or 0x3200
-            0
-        )
-
-        val pixelFormat = NSClass("NSOpenGLPixelFormat").alloc().msgSend("initWithAttributes:", glAttributes).autorelease()
-        val openGLContext = NSClass("NSOpenGLContext").alloc().msgSend("initWithFormat:shareContext:", pixelFormat, null).autorelease()
-        println("pixelFormat: $pixelFormat")
-        println("openGLContext: $openGLContext")
-        openGLContext.msgSend("setView:", contentView)
-        window.msgSend("setAcceptsMouseMovedEvents:", true)
-        window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blackColor"))
-        window.msgSend("makeKeyAndOrderFront:", app)
-        app.msgSend("activateIgnoringOtherApps:", true)
-
-        window.msgSend("setIsVisible:", true)
-
-        //val NSApp = Foundation.NATIVE.getGlobalVariableAddress("NSApp")
-        val NSDefaultRunLoopMode = Foundation.NATIVE.getGlobalVariableAddress("NSDefaultRunLoopMode")
-        //val NSDefaultRunLoopMode = Foundation.NATIVE.getGlobalVariableAddress("NSDefaultRunLoopMode")
-        println("NSDefaultRunLoopMode: $NSDefaultRunLoopMode")
-
-        //println("NSDefaultRunLoopMode: ${ObjectiveC.NATIVE.getGlobalVariableAddress("NSDefaultRunLoopMode")}")
-
-        //app.msgSend("run")
-
-        /*
-        while (true) {
-            val distantPast = NSClass("NSDate").msgSend("distantPast")
-            val event = app.msgSend("nextEventMatchingMask:untilDate:inMode:dequeue:", -1L, distantPast, NSDefaultRunLoopMode.getLong(0L), true)
-
-            if (event != 0L) {
-                //println("event: $event")
-                println("event: $event")
-            }
-
-            openGLContext.msgSend("update")
-            openGLContext.msgSend("makeCurrentContext")
-            val rect = NSRect()
-
-            //println(rect.pointer)
-            contentView.msgSend_stret(rect.pointer, "frame")
-            //val rect = contentView.msgSend("frame")
-            //println("rect: $rect")
-
-            app.msgSend("sendEvent:", event)
-            app.msgSend("updateWindows")
-            openGLContext.msgSend("flushBuffer")
-            //id event = ((id (*)(id, SEL, NSUInteger, id, id, BOOL))objc_msgSend)(NSApp, nextEventMatchingMaskSel, NSUIntegerMax, distantPast, NSDefaultRunLoopMode, YES);
-        }
-        */
-
-        //app.msgSend("updateWindows")
+    constructor() {
+        val memory = Native.malloc(32);
+        pointer = Pointer(memory);
     }
 
+    fun free() {
+        Native.free(Pointer.nativeValue(pointer));
+    }
 
-    app.msgSend("run")
+    fun getPointer(): Pointer {
+        return pointer;
+    }
 
-    autoreleasePool.msgSend("drain")
+    var a: Int get() = pointer.getInt(0L); set(value) = run { pointer.setInt(0L, value) }
+    var b: Int get() = pointer.getInt(4L); set(value) = run { pointer.setInt(4L, value) }
+    var c: Int get() = pointer.getInt(8L); set(value) = run { pointer.setInt(8L, value) }
+    var d: Int get() = pointer.getInt(12L); set(value) = run { pointer.setInt(12L, value) }
+    var e: Int get() = pointer.getInt(16L); set(value) = run { pointer.setInt(16L, value) }
+    var f: Int get() = pointer.getInt(20L); set(value) = run { pointer.setInt(20L, value) }
+    var g: Int get() = pointer.getInt(24L); set(value) = run { pointer.setInt(24L, value) }
+    var h: Int get() = pointer.getInt(28L); set(value) = run { pointer.setInt(28L, value) }
+
+    override fun toString(): String = "NativeNSRect($a, $b, $c, $d, $e, $f, $g, $h)"
+}
+
+@Structure.FieldOrder("x", "y", "width", "height")
+open class MyNativeNSRect : Structure {
+    @JvmField var x: Double = 0.0
+    @JvmField var y: Double = 0.0
+    @JvmField var width: Double = 0.0
+    @JvmField var height: Double = 0.0
+
+    constructor() {
+        allocateMemory()
+        autoWrite()
+    }
+
+    class ByReference : MyNativeNSRect(), Structure.ByReference
+    class ByValue : MyNativeNSRect(), Structure.ByValue
+
+    override fun toString(): String = "NSRect($x, $y, $width, $height)"
+}
+
+@Structure.FieldOrder("x", "y")
+open class MyNativeNSPoint : Structure {
+    @JvmField var x: Double = 0.0
+    @JvmField var y: Double = 0.0
+
+    constructor() {
+        allocateMemory()
+        autoWrite()
+    }
+
+    class ByReference : MyNativeNSPoint(), Structure.ByReference
+    class ByValue : MyNativeNSPoint(), Structure.ByValue
+
+    override fun toString(): String = "NSPoint($x, $y)"
 }

@@ -21,3 +21,9 @@ compileKotlin {
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
+
+task run(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs "-XstartOnFirstThread"
+    main = 'HelloJnaKt'
+}

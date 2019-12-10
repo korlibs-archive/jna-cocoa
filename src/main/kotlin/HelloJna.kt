@@ -24,9 +24,10 @@ fun main(args: Array<String>) {
 
     app.msgSend("setActivationPolicy:", 0)
     val AppDelegateClass = ObjectiveC.objc_allocateClassPair(NSObject.OBJ_CLASS, "AppDelegate", 0)
-    val NSApplicationDelegate = ObjectiveC.objc_getProtocol("NSApplicationDelegate")
-    ObjectiveC.class_addProtocol(AppDelegateClass, NSApplicationDelegate)
+    ObjectiveC.class_addProtocol(AppDelegateClass, ObjectiveC.objc_getProtocol("NSApplicationDelegate"))
     ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
+    ObjectiveC.objc_registerClassPair(AppDelegateClass)
+
     val appDelegate = AppDelegateClass.alloc().msgSend("init")
     app.msgSend("setDelegate:", appDelegate)
     app.msgSend("finishLaunching")
@@ -227,6 +228,8 @@ window.msgSend("setNextResponder:", Responder)
         openGLContext.msgSend("setView:", contentView)
         renderOpengl()
     }, "v@:@")
+    ObjectiveC.objc_registerClassPair(WindowDelegate)
+
 
     val Delegate = WindowDelegate.alloc().msgSend("init")
     window.msgSend("setDelegate:", Delegate)

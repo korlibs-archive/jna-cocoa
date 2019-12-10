@@ -36,6 +36,8 @@ interface ObjectiveC : Library {
 
     fun class_addProtocol(a: Long, b: Long): Long
 
+    fun objc_registerClassPair(cls: Long)
+
     fun objc_msgSend(vararg args: Any?): Long
     @NativeName("objc_msgSend")
     fun objc_msgSendNSPoint(vararg args: Any?): NSPointRes

@@ -24,17 +24,13 @@ fun main(args: Array<String>) {
 
     app.msgSend("setActivationPolicy:", 0)
     // ObjectiveC.objc_lookUpClass("NSApplication")
-    val AppDelegateClass = ObjectiveC.objc_allocateClassPair(NSObject.OBJ_CLASS, "AppDelegate", 0)
-    val NSApplicationDelegate = ObjectiveC.objc_getProtocol("NSApplicationDelegate")
-    if (NSApplicationDelegate != 0L) {
-        ObjectiveC.class_addProtocol(AppDelegateClass, NSApplicationDelegate)
+    val AppDelegateClass = AllocateClassAndRegister("AppDelegate", "NSObject", "NSApplicationDelegate") { AppDelegateClass ->
+        ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
     }
-    ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
-    ObjectiveC.objc_registerClassPair(AppDelegateClass)
 
-    println("AppDelegateClass: $AppDelegateClass")
-    println("NSApplicationDelegate: $NSApplicationDelegate")
-    println(ObjectiveC.class_conformsToProtocol(AppDelegateClass, NSApplicationDelegate))
+    //println("AppDelegateClass: $AppDelegateClass")
+    //println("NSApplicationDelegate: $NSApplicationDelegate")
+    //println(ObjectiveC.class_conformsToProtocol(AppDelegateClass, NSApplicationDelegate))
 
     val appDelegate = AppDelegateClass.alloc().msgSend("init")
     app.msgSend("setDelegate:", appDelegate)
@@ -59,7 +55,9 @@ fun main(args: Array<String>) {
     appMenuItem.msgSend("setSubmenu:", appMenu)
 
     val rect = NSRect(0, 0, 500, 500)
-    val MyNsWindow = AllocateClass("MyNSWindow", "NSWindow")
+    val MyNsWindow = AllocateClassAndRegister("MyNSWindow", "NSWindow") {
+
+    }
 
     val window = MyNsWindow.alloc().msgSend(
         "initWithContentRect:styleMask:backing:defer:",
@@ -218,28 +216,27 @@ val Responder = MyResponderClass.alloc().msgSend("init")
 window.msgSend("setNextResponder:", Responder)
 */
 
-    val WindowDelegate = AllocateClass("WindowDelegate", "NSObject", "NSWindowDelegate")
-    val NSWindowDelegate = ObjectiveC.objc_getProtocol("NSWindowDelegate")
-    println("NSWindowDelegate: $NSWindowDelegate")
-    ObjectiveC.class_addMethod(WindowDelegate, sel("windowWillClose:"), windowWillClose, "v@:@")
-    ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidExpose:"), ObjcCallbackVoid { self, _sel, notification ->
-        //println("windowDidExpose")
-        renderOpengl()
-    }, "v@:@")
-    ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidUpdate:"), ObjcCallbackVoid { self, _sel, notification ->
-        //println("windowDidUpdate")
-        renderOpengl()
-    }, "v@:@")
-    ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidResize:"), ObjcCallbackVoid { self, _sel, notification ->
-        val rect = MyNativeNSRect()
-        window.msgSend_stret(rect, "frame")
-        openGLContext.msgSend("clearDrawable")
-        contentView.msgSend("setBoundsSize:", MyNativeNSPoint.ByValue(rect.width, rect.height))
-        openGLContext.msgSend("setView:", contentView)
-        renderOpengl()
-    }, "v@:@")
-    ObjectiveC.objc_registerClassPair(WindowDelegate)
-
+    val WindowDelegate = AllocateClassAndRegister("WindowDelegate", "NSObject", "NSWindowDelegate") { WindowDelegate ->
+        val NSWindowDelegate = ObjectiveC.objc_getProtocol("NSWindowDelegate")
+        println("NSWindowDelegate: $NSWindowDelegate")
+        ObjectiveC.class_addMethod(WindowDelegate, sel("windowWillClose:"), windowWillClose, "v@:@")
+        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidExpose:"), ObjcCallbackVoid { self, _sel, notification ->
+            //println("windowDidExpose")
+            renderOpengl()
+        }, "v@:@")
+        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidUpdate:"), ObjcCallbackVoid { self, _sel, notification ->
+            //println("windowDidUpdate")
+            renderOpengl()
+        }, "v@:@")
+        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidResize:"), ObjcCallbackVoid { self, _sel, notification ->
+            val rect = MyNativeNSRect()
+            window.msgSend_stret(rect, "frame")
+            openGLContext.msgSend("clearDrawable")
+            contentView.msgSend("setBoundsSize:", MyNativeNSPoint.ByValue(rect.width, rect.height))
+            openGLContext.msgSend("setView:", contentView)
+            renderOpengl()
+        }, "v@:@")
+    }
 
     val Delegate = WindowDelegate.alloc().msgSend("init")
     window.msgSend("setDelegate:", Delegate)

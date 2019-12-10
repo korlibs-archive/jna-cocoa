@@ -85,6 +85,13 @@ fun AllocateClass(name: String, base: String, vararg protocols: String): Long {
     return clazz
 }
 
+inline fun AllocateClassAndRegister(name: String, base: String, vararg protocols: String, configure: (Long) -> Unit): Long {
+    val clazz = AllocateClass(name, base, *protocols)
+    configure(clazz)
+    ObjectiveC.objc_registerClassPair(clazz)
+    return clazz
+}
+
 interface Foundation : Library {
     fun NSLog(msg: Long): Unit
     fun NSMakeRect(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat): NSRect

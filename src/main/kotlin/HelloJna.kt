@@ -21,9 +21,32 @@ fun main(args: Array<String>) {
     val app = NSClass("NSApplication").msgSend("sharedApplication")
     val sharedApp = app
 
-    app.msgSend("setActivationPolicy:", 0)
     // ObjectiveC.objc_lookUpClass("NSApplication")
     val AppDelegateClass = AllocateClassAndRegister("AppDelegate", "NSObject", "NSApplicationDelegate") {
+        addMethod("applicationWillFinishLaunching:", object : ApplicationShouldTerminateCallback {
+            override fun invoke(self: Long, _sel: Long, sender: Long): Long {
+                println("applicationWillFinishLaunching")
+                val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
+
+                app.msgSend("setMainMenu:", NSMenu {
+                    addItem(NSMenuItem {
+                        setSubmenu(NSMenu {
+                            //addItem(NSMenuItem("About $processName", "onAboutTouched:", "a"))
+                            addItem(NSMenuItem("Quit $processName", "terminate:", "q"))
+                        })
+                    })
+                }.id)
+                app.msgSend("setActivationPolicy:", 0)
+                return 0L
+            }
+        }, "@:@")
+        addMethod("applicationDidFinishLaunching:", object : ApplicationShouldTerminateCallback {
+            override fun invoke(self: Long, _sel: Long, sender: Long): Long {
+                println("applicationDidFinishLaunching")
+                app.msgSend("activateIgnoringOtherApps:", true)
+                return 0L
+            }
+        }, "@:@")
         addMethod("applicationShouldTerminate:", applicationShouldTerminateCallback, "@:@")
     }
 
@@ -33,22 +56,77 @@ fun main(args: Array<String>) {
 
     val appDelegate = AppDelegateClass.alloc().msgSend("init")
     app.msgSend("setDelegate:", appDelegate)
-    app.msgSend("finishLaunching")
-
-    val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
-
-    app.msgSend("setMainMenu:", NSMenu {
-        addItem(NSMenuItem {
-            setSubmenu(NSMenu {
-                addItem(NSMenuItem("Quit $processName", "terminate:", "q"))
-            })
-        })
-    }.id)
 
     val rect = NSRect(0, 0, 500, 500)
-    val MyNsWindow = AllocateClassAndRegister("MyNSWindow", "NSWindow")
+    var window = 0L
+    var contentView = 0L
+    var openGLContext = 0L
+    val MyNsWindow = AllocateClassAndRegister("MyNSWindow", "NSWindow") {
 
-    val window = MyNsWindow.alloc().msgSend(
+        val mouseEvent = ObjcCallbackVoid { self, _sel, sender ->
+            val point = sender.msgSendNSPoint("locationInWindow")
+            val buttonNumber = sender.msgSend("buttonNumber")
+            val clickCount = sender.msgSend("clickCount")
+
+            val rect = MyNativeNSRect()
+            contentView.msgSend_stret(rect, "frame")
+
+            val rect2 = MyNativeNSRect()
+            window.msgSend_stret(rect2, "frame")
+
+            val rect3 = MyNativeNSRect()
+            window.msgSend_stret(rect3, "contentRectForFrameRect:", rect2)
+
+            val dims = intArrayOf(720, 480)
+            GL.CGLSetParameter(openGLContext, 304, dims)
+            GL.CGLEnable(openGLContext, 304)
+
+            val point2 = NSPoint(point.x, rect.height - point.y)
+
+            //val res = NSClass("NSEvent").id.msgSend_stret(data, "mouseLocation")
+
+            val selName = ObjectiveC.sel_getName(_sel)
+
+            println("MOUSE EVENT ($selName) from NSWindow! $point2 : $buttonNumber : $clickCount")
+        }
+
+        addMethod(("mouseEntered:"), mouseEvent, "v@:@")
+        addMethod(("mouseExited:"), mouseEvent, "v@:@")
+        addMethod(("mouseDragged:"), mouseEvent, "v@:@")
+        addMethod(("mouseMoved:"), mouseEvent, "v@:@")
+        addMethod(("mouseDown:"), mouseEvent, "v@:@")
+        addMethod(("mouseUp:"), mouseEvent, "v@:@")
+        addMethod(("rightMouseDragged:"), mouseEvent, "v@:@")
+        addMethod(("rightMouseMoved:"), mouseEvent, "v@:@")
+        addMethod(("rightMouseDown:"), mouseEvent, "v@:@")
+        addMethod(("rightMouseUp:"), mouseEvent, "v@:@")
+        addMethod(("otherMouseDragged:"), mouseEvent, "v@:@")
+        addMethod(("otherMouseMoved:"), mouseEvent, "v@:@")
+        addMethod(("otherMouseDown:"), mouseEvent, "v@:@")
+        addMethod(("otherMouseUp:"), mouseEvent, "v@:@")
+
+        val keyEvent = ObjcCallbackVoid { self, _sel, sender ->
+            val selName = ObjectiveC.sel_getName(_sel)
+            val characters = NSString(sender.msgSend("characters")).toString()
+            val charactersIgnoringModifiers = NSString(sender.msgSend("charactersIgnoringModifiers")).toString()
+            val char = charactersIgnoringModifiers.getOrNull(0) ?: '\u0000'
+            val keyCode = sender.msgSend("keyCode").toInt()
+
+            val key = KeyCodesToKeys[keyCode] ?: CharToKeys[char] ?: Key.UNKNOWN
+
+            println("keyDown: $selName : $characters : ${char.toInt()} : $charactersIgnoringModifiers : $keyCode : $key")
+        }
+
+       addMethod(("keyDown:"), keyEvent, "v@:@")
+       addMethod(("keyUp:"), keyEvent, "v@:@")
+       addMethod(("keyPress:"), keyEvent, "v@:@")
+       addMethod(("flagsChanged:"), ObjcCallbackVoid { self, _sel, sender ->
+            val modifierFlags = sender.msgSend("modifierFlags")
+            println("flags changed! : $modifierFlags")
+        }, "v@:@")
+    }
+
+    window = MyNsWindow.alloc().msgSend(
         "initWithContentRect:styleMask:backing:defer:",
         rect,
         NSWindowStyleMaskTitled or NSWindowStyleMaskClosable or NSWindowStyleMaskMiniaturizable or NSWindowStyleMaskResizable or NSWindowStyleMaskResizable,
@@ -77,8 +155,8 @@ fun main(args: Array<String>) {
             0
         )
     )
-    val openGLContext = NSClass("NSOpenGLContext").alloc().msgSend("initWithFormat:shareContext:", pixelFormat, null)
-    val contentView = window.msgSend("contentView")
+    openGLContext = NSClass("NSOpenGLContext").alloc().msgSend("initWithFormat:shareContext:", pixelFormat, null)
+    contentView = window.msgSend("contentView")
     openGLContext.msgSend("setView:", contentView)
     println("contentView: $contentView")
     contentView.msgSend("setWantsBestResolutionOpenGLSurface:", true)
@@ -96,10 +174,10 @@ fun main(args: Array<String>) {
     window.msgSend("makeKeyAndOrderFront:", app)
     window.msgSend("center")
 
-    app.msgSend("activateIgnoringOtherApps:", true)
-
     window.msgSend("makeKeyWindow")
     window.msgSend("setIsVisible:", true)
+
+    app.msgSend("finishLaunching")
 
     //contentView.msgSend("fullScreenEnable")
 
@@ -120,67 +198,6 @@ fun main(args: Array<String>) {
         openGLContext.msgSend("flushBuffer")
     }
 
-    val mouseEvent = ObjcCallbackVoid { self, _sel, sender ->
-        val point = sender.msgSendNSPoint("locationInWindow")
-        val buttonNumber = sender.msgSend("buttonNumber")
-        val clickCount = sender.msgSend("clickCount")
-
-        val rect = MyNativeNSRect()
-        contentView.msgSend_stret(rect, "frame")
-
-        val rect2 = MyNativeNSRect()
-        window.msgSend_stret(rect2, "frame")
-
-        val rect3 = MyNativeNSRect()
-        window.msgSend_stret(rect3, "contentRectForFrameRect:", rect2)
-
-        val dims = intArrayOf(720, 480)
-        GL.CGLSetParameter(openGLContext, 304, dims)
-        GL.CGLEnable(openGLContext, 304)
-
-        val point2 = NSPoint(point.x, rect.height - point.y)
-
-        //val res = NSClass("NSEvent").id.msgSend_stret(data, "mouseLocation")
-
-        val selName = ObjectiveC.sel_getName(_sel)
-
-        println("MOUSE EVENT ($selName) from NSWindow! $point2 : $buttonNumber : $clickCount")
-    }
-
-    ObjectiveC.class_addMethod(MyNsWindow, sel("mouseEntered:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("mouseExited:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("mouseDragged:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("mouseMoved:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("mouseDown:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("mouseUp:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("rightMouseDragged:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("rightMouseMoved:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("rightMouseDown:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("rightMouseUp:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("otherMouseDragged:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("otherMouseMoved:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("otherMouseDown:"), mouseEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("otherMouseUp:"), mouseEvent, "v@:@")
-
-    val keyEvent = ObjcCallbackVoid { self, _sel, sender ->
-        val selName = ObjectiveC.sel_getName(_sel)
-        val characters = NSString(sender.msgSend("characters")).toString()
-        val charactersIgnoringModifiers = NSString(sender.msgSend("charactersIgnoringModifiers")).toString()
-        val char = charactersIgnoringModifiers.getOrNull(0) ?: '\u0000'
-        val keyCode = sender.msgSend("keyCode").toInt()
-
-        val key = KeyCodesToKeys[keyCode] ?: CharToKeys[char] ?: Key.UNKNOWN
-
-        println("keyDown: $selName : $characters : ${char.toInt()} : $charactersIgnoringModifiers : $keyCode : $key")
-    }
-
-    ObjectiveC.class_addMethod(MyNsWindow, sel("keyDown:"), keyEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("keyUp:"), keyEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("keyPress:"), keyEvent, "v@:@")
-    ObjectiveC.class_addMethod(MyNsWindow, sel("flagsChanged:"), ObjcCallbackVoid { self, _sel, sender ->
-        val modifierFlags = sender.msgSend("modifierFlags")
-        println("flags changed! : $modifierFlags")
-    }, "v@:@")
     window.msgSend("setAcceptsMouseMovedEvents:", true)
 
     /*

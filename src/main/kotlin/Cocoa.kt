@@ -21,13 +21,13 @@ interface GL : Library {
     fun glViewport(x: Int, y: Int, width: Int, height: Int)
     fun glClearColor(r: Float, g: Float, b: Float, a: Float)
     fun glClear(flags: Int)
+    fun glFlush()
     fun CGLSetParameter(vararg args: Any?)
     fun CGLEnable(vararg args: Any?)
     companion object : GL by NativeLoad("OpenGL") {
         const val GL_COLOR_BUFFER_BIT = 0x00004000
         val NATIVE = NativeLibrary.getInstance("OpenGL")
     }
-
 }
 
 interface ObjectiveC : Library {
@@ -183,6 +183,23 @@ open class NSClass(val name: String) : NSObject(ObjectiveC.objc_getClass(name)) 
     val OBJ_CLASS = id
 }
 
+fun NSClass.listClassMethods(): List<String> = ObjC_listMethods(ObjectiveC.object_getClass(this.id))
+fun NSClass.listInstanceMethods(): List<String> = ObjC_listMethods(this.id)
+
+fun ObjC_listMethods(clazz: Long): List<String> {
+    val nitemsPtr = IntArray(1)
+    val items2 = ObjectiveC.class_copyMethodList(clazz, nitemsPtr)
+    val nitems = nitemsPtr[0]
+    val out = ArrayList<String>(nitems)
+    for (n in 0 until nitems) {
+        val ptr = items2.getNativeLong((Native.LONG_SIZE * n).toLong())
+        val mname = ObjectiveC.method_getName(ptr.toLong())
+        val selName = ObjectiveC.sel_getName(mname)
+        out.add(selName)
+    }
+    return out
+}
+
 class NSApplication(id: Long) : NSObject(id) {
     fun setActivationPolicy(value: Int) = id.msgSend("setActivationPolicy:", value.toLong())
 
@@ -233,6 +250,12 @@ fun ObjcCallback(callback: (self: Long, _sel: Long, sender: Long) -> Long): Objc
 fun ObjcCallbackVoid(callback: (self: Long, _sel: Long, sender: Long) -> Unit): ObjcCallbackVoid {
     return object : ObjcCallbackVoid {
         override fun invoke(self: Long, _sel: Long, sender: Long): Unit = callback(self, _sel, sender)
+    }
+}
+
+fun ObjcCallbackVoidEmpty(callback: () -> Unit): ObjcCallbackVoid {
+    return object : ObjcCallbackVoid {
+        override fun invoke(self: Long, _sel: Long, sender: Long): Unit = callback()
     }
 }
 
@@ -437,4 +460,45 @@ open class MyNativeNSPointLong() : Structure() {
     class ByValue : MyNativeNSPoint(), Structure.ByValue
 
     override fun toString(): String = "NSPoint($x, $y)"
+}
+
+inline class NSMenuItem(val id: Long) {
+    constructor() : this(NSClass("NSMenuItem").alloc().msgSend("init"))
+    constructor(text: String, sel: String, keyEquivalent: String) : this(
+        NSClass("NSMenuItem").alloc().msgSend(
+            "initWithTitle:action:keyEquivalent:",
+            NSString(text).id,
+            sel(sel),
+            NSString(keyEquivalent).id
+        ).autorelease()
+    )
+
+    companion object {
+        operator fun invoke(callback: NSMenuItem.() -> Unit) = NSMenuItem().apply(callback)
+    }
+
+    fun setSubmenu(menu: NSMenu) {
+        id.msgSend("setSubmenu:", menu.id)
+    }
+}
+
+inline class NSMenu(val id: Long) {
+    constructor() : this(NSClass("NSMenu").alloc().msgSend("init"))
+
+    companion object {
+        operator fun invoke(callback: NSMenu.() -> Unit) = NSMenu().apply(callback)
+    }
+
+    fun addItem(menuItem: NSMenuItem) {
+        id.msgSend("addItem:", menuItem.id)
+    }
+}
+
+inline fun autoreleasePool(body: () -> Unit) {
+    val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
+    try {
+        body()
+    } finally {
+        autoreleasePool.msgSend("drain")
+    }
 }

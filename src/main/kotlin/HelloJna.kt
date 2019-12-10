@@ -20,31 +20,25 @@ fun main(args: Array<String>) {
     autoreleasePool {
         val app = NSClass("NSApplication").msgSend("sharedApplication").also { app ->
             app.msgSend("setDelegate:", AllocateClassAndRegister("AppDelegate", "NSObject", "NSApplicationDelegate") {
-                addMethod("applicationWillFinishLaunching:", object : ApplicationShouldTerminateCallback {
-                    override fun invoke(self: Long, _sel: Long, sender: Long): Long {
+                addMethod("applicationWillFinishLaunching:", ObjcCallbackVoidEmpty {
                         println("applicationWillFinishLaunching")
-                        return 0L
-                    }
                 }, "@:@")
-                addMethod("applicationDidFinishLaunching:", object : ApplicationShouldTerminateCallback {
-                    override fun invoke(self: Long, _sel: Long, sender: Long): Long {
-                        val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
+                addMethod("applicationDidFinishLaunching:", ObjcCallbackVoidEmpty {
+                    val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
 
-                        app.msgSend("setMainMenu:", NSMenu {
-                            addItem(NSMenuItem {
-                                setSubmenu(NSMenu {
-                                    //addItem(NSMenuItem("About $processName", "onAboutTouched:", ""))
-                                    addItem(NSMenuItem("Quit $processName", "terminate:", "q"))
-                                })
+                    app.msgSend("setMainMenu:", NSMenu {
+                        addItem(NSMenuItem {
+                            setSubmenu(NSMenu {
+                                //addItem(NSMenuItem("About $processName", "onAboutTouched:", ""))
+                                addItem(NSMenuItem("Quit $processName", "terminate:", "q"))
                             })
-                        }.id)
+                        })
+                    }.id)
 
-                        app.msgSend("setActivationPolicy:", 0)
-                        app.msgSend("activateIgnoringOtherApps:", true)
+                    app.msgSend("setActivationPolicy:", 0)
+                    app.msgSend("activateIgnoringOtherApps:", true)
 
-                        println("applicationDidFinishLaunching")
-                        return 0L
-                    }
+                    println("applicationDidFinishLaunching")
                 }, "@:@")
                 addMethod("applicationShouldTerminate:", applicationShouldTerminateCallback, "@:@")
             }.alloc().msgSend("init"))
@@ -360,44 +354,3 @@ val NSWindowStyleMaskFullScreen = 1 shl 14
 val NSWindowStyleMaskFullSizeContentView = 1 shl 15
 
 val NSBackingStoreBuffered = 2
-
-inline class NSMenuItem(val id: Long) {
-    constructor() : this(NSClass("NSMenuItem").alloc().msgSend("init"))
-    constructor(text: String, sel: String, keyEquivalent: String) : this(
-        NSClass("NSMenuItem").alloc().msgSend(
-            "initWithTitle:action:keyEquivalent:",
-            NSString(text).id,
-            sel(sel),
-            NSString(keyEquivalent).id
-        ).autorelease()
-    )
-
-    companion object {
-        operator fun invoke(callback: NSMenuItem.() -> Unit) = NSMenuItem().apply(callback)
-    }
-
-    fun setSubmenu(menu: NSMenu) {
-        id.msgSend("setSubmenu:", menu.id)
-    }
-}
-
-inline class NSMenu(val id: Long) {
-    constructor() : this(NSClass("NSMenu").alloc().msgSend("init"))
-
-    companion object {
-        operator fun invoke(callback: NSMenu.() -> Unit) = NSMenu().apply(callback)
-    }
-
-    fun addItem(menuItem: NSMenuItem) {
-        id.msgSend("addItem:", menuItem.id)
-    }
-}
-
-inline fun autoreleasePool(body: () -> Unit) {
-    val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
-    try {
-        body()
-    } finally {
-        autoreleasePool.msgSend("drain")
-    }
-}

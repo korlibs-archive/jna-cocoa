@@ -1,10 +1,5 @@
 // Must run with: -XstartOnFirstThread
 fun main(args: Array<String>) {
-    val isMainThread = NSClass("NSThread").msgSend("isMainThread") != 0L
-    if (!isMainThread) {
-        error("Can't use this. Since we are not in the main thread!")
-    }
-
     // https://indiestack.com/2016/12/touch-bar-crash-protection/
     //[[NSUserDefaults standardUserDefaults] registerDefaults:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:@"NSFunctionBarAPIEnabled"]];
     NSClass("NSUserDefaults").msgSend("standardUserDefaults").msgSend(
@@ -15,6 +10,12 @@ fun main(args: Array<String>) {
             NSString("NSFunctionBarAPIEnabled")
         )
     )
+
+
+    val isMainThread = NSClass("NSThread").msgSend("isMainThread") != 0L
+    if (!isMainThread) {
+        error("Can't use this. Since we are not in the main thread!")
+    }
 
     val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
 

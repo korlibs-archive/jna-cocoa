@@ -1,42 +1,3 @@
-// -XstartOnFirstThread
-fun main2(args: Array<String>) {
-    val pool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
-    val sharedApp = NSClass("NSApplication").msgSend("sharedApplication")
-
-    //val rect = Foundation.NSMakeRect(CGFloat(0), CGFloat(0), CGFloat(500), CGFloat(500))
-    val frame = NSRect(0, 0, 500, 500)
-    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", frame, 0, 0, 0)
-    window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blueColor"))
-    window.msgSend("makeKeyAndOrderFront:", sharedApp)
-
-    sharedApp.msgSend("run")
-
-    //println(rect)
-    /*
-    val frame = NSMakeRect(0, 0, 500, 500);
-    NSWindow* window  = [[[NSWindow alloc] initWithContentRect:frame
-        styleMask:NSBorderlessWindowMask
-    backing:NSBackingStoreBuffered
-    defer:NO] autorelease];
-    [window setBackgroundColor:[NSColor blueColor]];
-    [window makeKeyAndOrderFront:NSApp];
-
-    //AppDelegate *appDelegate = [[AppDelegate alloc] init];
-    //[NSApp setDelegate:appDelegate];
-    [NSApp run];
-    [pool release];
-     */
-}
-
-val NSWindowStyleMaskTitled = 1 shl 0
-val NSWindowStyleMaskClosable = 1 shl 1
-val NSWindowStyleMaskMiniaturizable = 1 shl 2
-val NSWindowStyleMaskResizable = 1 shl 3
-val NSWindowStyleMaskFullScreen = 1 shl 14
-val NSWindowStyleMaskFullSizeContentView = 1 shl 15
-
-val NSBackingStoreBuffered = 2
-
 // Must run with: -XstartOnFirstThread
 fun main(args: Array<String>) {
     val isMainThread = NSClass("NSThread").msgSend("isMainThread") != 0L
@@ -46,13 +7,14 @@ fun main(args: Array<String>) {
 
     // https://indiestack.com/2016/12/touch-bar-crash-protection/
     //[[NSUserDefaults standardUserDefaults] registerDefaults:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:@"NSFunctionBarAPIEnabled"]];
-    run {
-        val number0 = NSClass("NSNumber").msgSend("numberWithBool:", 0)
-        val nsStr = NSString("NSFunctionBarAPIEnabled")
-        val myDict = NSClass("NSDictionary").msgSend("dictionaryWithObject:forKey:", number0,  nsStr)
-        val standardUserDefaults = NSClass("NSUserDefaults").msgSend("standardUserDefaults")
-        standardUserDefaults.msgSend("registerDefaults:", myDict)
-    }
+    NSClass("NSUserDefaults").msgSend("standardUserDefaults").msgSend(
+        "registerDefaults:",
+        NSClass("NSDictionary").msgSend(
+            "dictionaryWithObject:forKey:",
+            NSClass("NSNumber").msgSend("numberWithBool:", 0),
+            NSString("NSFunctionBarAPIEnabled")
+        )
+    )
 
     val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
 
@@ -408,3 +370,43 @@ enum class Key {
         val NUMPAD9 = N9
     }
 }
+
+// -XstartOnFirstThread
+fun main2(args: Array<String>) {
+    val pool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
+    val sharedApp = NSClass("NSApplication").msgSend("sharedApplication")
+
+    //val rect = Foundation.NSMakeRect(CGFloat(0), CGFloat(0), CGFloat(500), CGFloat(500))
+    val frame = NSRect(0, 0, 500, 500)
+    val window = NSClass("NSWindow").alloc().msgSend("initWithContentRect:styleMask:backing:defer:", frame, 0, 0, 0)
+    window.msgSend("setBackgroundColor:", NSClass("NSColor").msgSend("blueColor"))
+    window.msgSend("makeKeyAndOrderFront:", sharedApp)
+
+    sharedApp.msgSend("run")
+
+    //println(rect)
+    /*
+    val frame = NSMakeRect(0, 0, 500, 500);
+    NSWindow* window  = [[[NSWindow alloc] initWithContentRect:frame
+        styleMask:NSBorderlessWindowMask
+    backing:NSBackingStoreBuffered
+    defer:NO] autorelease];
+    [window setBackgroundColor:[NSColor blueColor]];
+    [window makeKeyAndOrderFront:NSApp];
+
+    //AppDelegate *appDelegate = [[AppDelegate alloc] init];
+    //[NSApp setDelegate:appDelegate];
+    [NSApp run];
+    [pool release];
+     */
+}
+
+
+val NSWindowStyleMaskTitled = 1 shl 0
+val NSWindowStyleMaskClosable = 1 shl 1
+val NSWindowStyleMaskMiniaturizable = 1 shl 2
+val NSWindowStyleMaskResizable = 1 shl 3
+val NSWindowStyleMaskFullScreen = 1 shl 14
+val NSWindowStyleMaskFullSizeContentView = 1 shl 15
+
+val NSBackingStoreBuffered = 2

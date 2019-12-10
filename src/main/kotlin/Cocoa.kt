@@ -52,6 +52,8 @@ interface ObjectiveC : Library {
     fun objc_msgSend(a: Long, b: Long, c: ByteArray, len: Int): Long
     fun objc_msgSend(a: Long, b: Long, c: CharArray, len: Int): Long
      */
+    fun method_getName(m: Long): Long
+
     fun sel_registerName(name: String): Long
 
     fun sel_getName(sel: Long): String
@@ -64,6 +66,7 @@ interface ObjectiveC : Library {
     fun class_addMethod(cls: Long, name: Long, imp: Callback, types: String): Long
     fun class_conformsToProtocol(cls: Long, protocol: Long): Boolean
 
+    fun object_getClassName(obj: ID): String
     fun object_getClass(obj: ID): ID
     fun class_getName(clazz: ID): String
 

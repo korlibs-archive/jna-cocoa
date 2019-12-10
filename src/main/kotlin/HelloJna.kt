@@ -37,7 +37,23 @@ val NSWindowStyleMaskFullSizeContentView = 1 shl 15
 
 val NSBackingStoreBuffered = 2
 
+// Must run with: -XstartOnFirstThread
 fun main(args: Array<String>) {
+    val isMainThread = NSClass("NSThread").msgSend("isMainThread") != 0L
+    if (!isMainThread) {
+        error("Can't use this. Since we are not in the main thread!")
+    }
+
+    // https://indiestack.com/2016/12/touch-bar-crash-protection/
+    //[[NSUserDefaults standardUserDefaults] registerDefaults:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:@"NSFunctionBarAPIEnabled"]];
+    run {
+        val number0 = NSClass("NSNumber").msgSend("numberWithBool:", 0)
+        val nsStr = NSString("NSFunctionBarAPIEnabled")
+        val myDict = NSClass("NSDictionary").msgSend("dictionaryWithObject:forKey:", number0,  nsStr)
+        val standardUserDefaults = NSClass("NSUserDefaults").msgSend("standardUserDefaults")
+        standardUserDefaults.msgSend("registerDefaults:", myDict)
+    }
+
     val autoreleasePool = NSClass("NSAutoreleasePool").alloc().msgSend("init")
 
     val app = NSClass("NSApplication").msgSend("sharedApplication")

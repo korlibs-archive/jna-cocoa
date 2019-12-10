@@ -35,6 +35,7 @@ interface ObjectiveC : Library {
     fun objc_getProtocol(name: String): Long
 
     fun class_addProtocol(a: Long, b: Long): Long
+    fun class_copyMethodList(clazz: Long, items: IntArray): Pointer
 
     fun objc_registerClassPair(cls: Long)
     fun objc_lookUpClass(name: String): Long

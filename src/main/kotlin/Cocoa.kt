@@ -37,6 +37,7 @@ interface ObjectiveC : Library {
     fun class_addProtocol(a: Long, b: Long): Long
 
     fun objc_registerClassPair(cls: Long)
+    fun objc_lookUpClass(name: String): Long
 
     fun objc_msgSend(vararg args: Any?): Long
     @NativeName("objc_msgSend")
@@ -60,6 +61,7 @@ interface ObjectiveC : Library {
     fun class_getProperty(clazz: ID, name: String): ID
 
     fun class_addMethod(cls: Long, name: Long, imp: Callback, types: String): Long
+    fun class_conformsToProtocol(cls: Long, protocol: Long): Boolean
 
     fun object_getClass(obj: ID): ID
     fun class_getName(clazz: ID): String
@@ -75,7 +77,10 @@ interface ObjectiveC : Library {
 fun AllocateClass(name: String, base: String, vararg protocols: String): Long {
     val clazz = ObjectiveC.objc_allocateClassPair(ObjectiveC.objc_getClass(base), name, 0)
     for (protocol in protocols) {
-        ObjectiveC.class_addProtocol(clazz, ObjectiveC.objc_getProtocol(protocol))
+        val protocolId = ObjectiveC.objc_getProtocol(protocol)
+        if (protocolId != 0L) {
+            ObjectiveC.class_addProtocol(clazz, protocolId)
+        }
     }
     return clazz
 }

@@ -23,10 +23,18 @@ fun main(args: Array<String>) {
     val sharedApp = app
 
     app.msgSend("setActivationPolicy:", 0)
+    // ObjectiveC.objc_lookUpClass("NSApplication")
     val AppDelegateClass = ObjectiveC.objc_allocateClassPair(NSObject.OBJ_CLASS, "AppDelegate", 0)
-    ObjectiveC.class_addProtocol(AppDelegateClass, ObjectiveC.objc_getProtocol("NSApplicationDelegate"))
+    val NSApplicationDelegate = ObjectiveC.objc_getProtocol("NSApplicationDelegate")
+    if (NSApplicationDelegate != 0L) {
+        ObjectiveC.class_addProtocol(AppDelegateClass, NSApplicationDelegate)
+    }
     ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
     ObjectiveC.objc_registerClassPair(AppDelegateClass)
+
+    println("AppDelegateClass: $AppDelegateClass")
+    println("NSApplicationDelegate: $NSApplicationDelegate")
+    println(ObjectiveC.class_conformsToProtocol(AppDelegateClass, NSApplicationDelegate))
 
     val appDelegate = AppDelegateClass.alloc().msgSend("init")
     app.msgSend("setDelegate:", appDelegate)
@@ -211,6 +219,8 @@ window.msgSend("setNextResponder:", Responder)
 */
 
     val WindowDelegate = AllocateClass("WindowDelegate", "NSObject", "NSWindowDelegate")
+    val NSWindowDelegate = ObjectiveC.objc_getProtocol("NSWindowDelegate")
+    println("NSWindowDelegate: $NSWindowDelegate")
     ObjectiveC.class_addMethod(WindowDelegate, sel("windowWillClose:"), windowWillClose, "v@:@")
     ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidExpose:"), ObjcCallbackVoid { self, _sel, notification ->
         //println("windowDidExpose")

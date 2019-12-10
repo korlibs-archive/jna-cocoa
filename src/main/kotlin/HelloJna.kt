@@ -24,8 +24,8 @@ fun main(args: Array<String>) {
 
     app.msgSend("setActivationPolicy:", 0)
     // ObjectiveC.objc_lookUpClass("NSApplication")
-    val AppDelegateClass = AllocateClassAndRegister("AppDelegate", "NSObject", "NSApplicationDelegate") { AppDelegateClass ->
-        ObjectiveC.class_addMethod(AppDelegateClass, sel("applicationShouldTerminate:"), applicationShouldTerminateCallback, "@:@");
+    val AppDelegateClass = AllocateClassAndRegister("AppDelegate", "NSObject", "NSApplicationDelegate") {
+        addMethod("applicationShouldTerminate:", applicationShouldTerminateCallback, "@:@")
     }
 
     //println("AppDelegateClass: $AppDelegateClass")
@@ -216,19 +216,19 @@ val Responder = MyResponderClass.alloc().msgSend("init")
 window.msgSend("setNextResponder:", Responder)
 */
 
-    val WindowDelegate = AllocateClassAndRegister("WindowDelegate", "NSObject", "NSWindowDelegate") { WindowDelegate ->
+    val WindowDelegate = AllocateClassAndRegister("WindowDelegate", "NSObject", "NSWindowDelegate") {
         val NSWindowDelegate = ObjectiveC.objc_getProtocol("NSWindowDelegate")
         println("NSWindowDelegate: $NSWindowDelegate")
-        ObjectiveC.class_addMethod(WindowDelegate, sel("windowWillClose:"), windowWillClose, "v@:@")
-        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidExpose:"), ObjcCallbackVoid { self, _sel, notification ->
+        addMethod("windowWillClose:", windowWillClose, "v@:@")
+        addMethod("windowDidExpose:", ObjcCallbackVoid { self, _sel, notification ->
             //println("windowDidExpose")
             renderOpengl()
         }, "v@:@")
-        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidUpdate:"), ObjcCallbackVoid { self, _sel, notification ->
+        addMethod("windowDidUpdate:", ObjcCallbackVoid { self, _sel, notification ->
             //println("windowDidUpdate")
             renderOpengl()
         }, "v@:@")
-        ObjectiveC.class_addMethod(WindowDelegate, sel("windowDidResize:"), ObjcCallbackVoid { self, _sel, notification ->
+        addMethod("windowDidResize:", ObjcCallbackVoid { self, _sel, notification ->
             val rect = MyNativeNSRect()
             window.msgSend_stret(rect, "frame")
             openGLContext.msgSend("clearDrawable")

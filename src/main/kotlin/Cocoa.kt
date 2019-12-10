@@ -74,7 +74,8 @@ interface ObjectiveC : Library {
     }
 }
 
-fun AllocateClass(name: String, base: String, vararg protocols: String): Long {
+@PublishedApi
+internal fun __AllocateClass(name: String, base: String, vararg protocols: String): Long {
     val clazz = ObjectiveC.objc_allocateClassPair(ObjectiveC.objc_getClass(base), name, 0)
     for (protocol in protocols) {
         val protocolId = ObjectiveC.objc_getProtocol(protocol)
@@ -85,11 +86,20 @@ fun AllocateClass(name: String, base: String, vararg protocols: String): Long {
     return clazz
 }
 
-inline fun AllocateClassAndRegister(name: String, base: String, vararg protocols: String, configure: (Long) -> Unit): Long {
-    val clazz = AllocateClass(name, base, *protocols)
-    configure(clazz)
-    ObjectiveC.objc_registerClassPair(clazz)
+inline fun AllocateClassAndRegister(name: String, base: String, vararg protocols: String, configure: AllocateClassMethodRegister.() -> Unit): Long {
+    val clazz = __AllocateClass(name, base, *protocols)
+    try {
+        configure(AllocateClassMethodRegister(clazz))
+    } finally {
+        ObjectiveC.objc_registerClassPair(clazz)
+    }
     return clazz
+}
+
+inline class AllocateClassMethodRegister(val clazz: Long) {
+    fun addMethod(sel: String, callback: Callback, types: String) {
+        ObjectiveC.class_addMethod(clazz, sel(sel), callback, types)
+    }
 }
 
 interface Foundation : Library {

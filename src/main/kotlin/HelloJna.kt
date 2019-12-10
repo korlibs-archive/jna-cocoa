@@ -11,7 +11,6 @@ fun main(args: Array<String>) {
         )
     )
 
-
     val isMainThread = NSClass("NSThread").msgSend("isMainThread") != 0L
     if (!isMainThread) {
         error("Can't use this. Since we are not in the main thread!")
@@ -36,28 +35,18 @@ fun main(args: Array<String>) {
     app.msgSend("setDelegate:", appDelegate)
     app.msgSend("finishLaunching")
 
-    val menubar = NSClass("NSMenu").alloc().msgSend("init")
-    val appMenuItem = NSClass("NSMenuItem").alloc().msgSend("init")
-    menubar.msgSend("addItem:", appMenuItem)
-    app.msgSend("setMainMenu:", menubar)
-
-    ///////////////////
-
     val processName = NSString(NSClass("NSProcessInfo").msgSend("processInfo").msgSend("processName"))
 
-    var a: NSRect
-
-    val appMenu = NSClass("NSMenu").alloc().msgSend("init")
-    val quitMenuItem = NSClass("NSMenuItem").alloc()
-        .msgSend("initWithTitle:action:keyEquivalent:", NSString("Quit $processName").id, sel("terminate:"), NSString("q").id)
-    quitMenuItem.msgSend("autorelease")
-    appMenu.msgSend("addItem:", quitMenuItem)
-    appMenuItem.msgSend("setSubmenu:", appMenu)
+    app.msgSend("setMainMenu:", NSMenu {
+        addItem(NSMenuItem {
+            setSubmenu(NSMenu {
+                addItem(NSMenuItem("Quit $processName", "terminate:", "q"))
+            })
+        })
+    }.id)
 
     val rect = NSRect(0, 0, 500, 500)
-    val MyNsWindow = AllocateClassAndRegister("MyNSWindow", "NSWindow") {
-
-    }
+    val MyNsWindow = AllocateClassAndRegister("MyNSWindow", "NSWindow")
 
     val window = MyNsWindow.alloc().msgSend(
         "initWithContentRect:styleMask:backing:defer:",
@@ -412,7 +401,6 @@ fun main2(args: Array<String>) {
      */
 }
 
-
 val NSWindowStyleMaskTitled = 1 shl 0
 val NSWindowStyleMaskClosable = 1 shl 1
 val NSWindowStyleMaskMiniaturizable = 1 shl 2
@@ -421,3 +409,35 @@ val NSWindowStyleMaskFullScreen = 1 shl 14
 val NSWindowStyleMaskFullSizeContentView = 1 shl 15
 
 val NSBackingStoreBuffered = 2
+
+inline class NSMenuItem(val id: Long) {
+    constructor() : this(NSClass("NSMenuItem").alloc().msgSend("init"))
+    constructor(text: String, sel: String, keyEquivalent: String) : this(
+        NSClass("NSMenuItem").alloc().msgSend(
+            "initWithTitle:action:keyEquivalent:",
+            NSString(text).id,
+            sel(sel),
+            NSString(keyEquivalent).id
+        ).autorelease()
+    )
+
+    companion object {
+        operator fun invoke(callback: NSMenuItem.() -> Unit) = NSMenuItem().apply(callback)
+    }
+
+    fun setSubmenu(menu: NSMenu) {
+        id.msgSend("setSubmenu:", menu.id)
+    }
+}
+
+inline class NSMenu(val id: Long) {
+    constructor() : this(NSClass("NSMenu").alloc().msgSend("init"))
+
+    companion object {
+        operator fun invoke(callback: NSMenu.() -> Unit) = NSMenu().apply(callback)
+    }
+
+    fun addItem(menuItem: NSMenuItem) {
+        id.msgSend("addItem:", menuItem.id)
+    }
+}

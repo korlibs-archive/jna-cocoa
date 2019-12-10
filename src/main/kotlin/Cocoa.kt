@@ -86,7 +86,7 @@ internal fun __AllocateClass(name: String, base: String, vararg protocols: Strin
     return clazz
 }
 
-inline fun AllocateClassAndRegister(name: String, base: String, vararg protocols: String, configure: AllocateClassMethodRegister.() -> Unit): Long {
+inline fun AllocateClassAndRegister(name: String, base: String, vararg protocols: String, configure: AllocateClassMethodRegister.() -> Unit = {}): Long {
     val clazz = __AllocateClass(name, base, *protocols)
     try {
         configure(AllocateClassMethodRegister(clazz))
